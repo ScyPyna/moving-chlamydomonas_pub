@@ -35,6 +35,8 @@ class FilterParams:
     strict: bool = True
     only_inside: bool = True
     blinking_ratio: float = 0.5
+    blinking_tolerance: float = 0.0
+    long_track_min_snaps: int = 0
 
 
 @dataclass
@@ -183,6 +185,16 @@ def analyze_experiment(
         fluo_flag=fluo_flag,
     )
 
+    # filt = cu.Filters(
+    #     lifetime_min=fparams.lifetime_min,
+    #     threshold_dist=fparams.threshold_dist,
+    #     threshold_dist_tot=fparams.threshold_dist_tot,
+    #     dist_step=fparams.dist_step,
+    #     strict=fparams.strict,
+    #     only_inside=fparams.only_inside,
+    #     blinking_ratio=fparams.blinking_ratio,
+    # )
+
     filt = cu.Filters(
         lifetime_min=fparams.lifetime_min,
         threshold_dist=fparams.threshold_dist,
@@ -191,6 +203,10 @@ def analyze_experiment(
         strict=fparams.strict,
         only_inside=fparams.only_inside,
         blinking_ratio=fparams.blinking_ratio,
+
+        # NUOVI PARAMETRI
+        blinking_tolerance=getattr(fparams, "blinking_tolerance", 0.0),
+        long_track_min_snaps=getattr(fparams, "long_track_min_snaps", 0),
     )
 
     Xtot = traj_df["x_px"].to_numpy(dtype=float) * pix

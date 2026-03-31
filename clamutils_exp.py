@@ -137,12 +137,60 @@ class particle_class:
             dist = cdist(points, [self.center])[:, 0]
         self.dist=np.copy(dist)
     
-    def existance(self,filter):
-        blinking_cond=self.first_last_snap*filter.blinking_ratio<self.total_snaps
-        minimum_lifetime_cond=self.total_snaps*self.dt>filter.lifetime_min
-        minimum_avg_displ_cond=np.mean(np.sqrt((self.xtraj[1:]-self.xtraj[:-1])**2+(self.ytraj[1:]-self.ytraj[:-1])**2))>filter.threshold_dist
-        minimum_total_displ_cond=np.abs(self.xtraj[-1]-self.xtraj[0])>filter.threshold_dist_tot and np.abs(self.ytraj[-1]-self.ytraj[0])>filter.threshold_dist_tot
-        self.exist=blinking_cond and minimum_lifetime_cond and minimum_avg_displ_cond and minimum_total_displ_cond
+    # def existance(self,filter):
+    #     blinking_cond=self.first_last_snap*filter.blinking_ratio<self.total_snaps
+    #     minimum_lifetime_cond=self.total_snaps*self.dt>filter.lifetime_min
+    #     minimum_avg_displ_cond=np.mean(np.sqrt((self.xtraj[1:]-self.xtraj[:-1])**2+(self.ytraj[1:]-self.ytraj[:-1])**2))>filter.threshold_dist
+    #     minimum_total_displ_cond=np.abs(self.xtraj[-1]-self.xtraj[0])>filter.threshold_dist_tot and np.abs(self.ytraj[-1]-self.ytraj[0])>filter.threshold_dist_tot
+    #     self.exist=blinking_cond and minimum_lifetime_cond and minimum_avg_displ_cond and minimum_total_displ_cond
+
+    def existance(self, filter):
+        if self.first_last_snap <= 0 or self.total_snaps <= 1:
+            self.exist = False
+            return
+
+        # --- BLINKING ---
+        presence_ratio = self.total_snaps / self.first_last_snap
+
+        tol = 0.0
+        if self.total_snaps >= filter.long_track_min_snaps:
+            tol = filter.blinking_tolerance
+
+        effective_blink_threshold = max(0.0, filter.blinking_ratio - tol)
+
+        blinking_cond = presence_ratio > effective_blink_threshold
+
+        # --- LIFETIME ---
+        minimum_lifetime_cond = self.total_snaps * self.dt > filter.lifetime_min
+
+        # --- STEP (MEDIANA) ---
+        steps = np.sqrt(
+            (self.xtraj[1:] - self.xtraj[:-1])**2 +
+            (self.ytraj[1:] - self.ytraj[:-1])**2
+        )
+
+        if len(steps) > 0:
+            avg_step = np.median(steps)
+        else:
+            avg_step = 0.0
+
+        minimum_avg_displ_cond = avg_step > filter.threshold_dist
+
+        # --- TOTAL DISPLACEMENT (EUCLIDEO) ---
+        dx_tot = self.xtraj[-1] - self.xtraj[0]
+        dy_tot = self.ytraj[-1] - self.ytraj[0]
+
+        disp_tot = np.sqrt(dx_tot**2 + dy_tot**2)
+
+        minimum_total_displ_cond = disp_tot > filter.threshold_dist_tot
+
+        # --- RISULTATO ---
+        self.exist = (
+            blinking_cond
+            and minimum_lifetime_cond
+            and minimum_avg_displ_cond
+            and minimum_total_displ_cond
+        )
     
     def traj_cleaner(self,filter):
         dy=self.ytraj[filter.dist_step::filter.dist_step]-self.ytraj[:-filter.dist_step:filter.dist_step]

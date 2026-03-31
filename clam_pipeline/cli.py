@@ -77,6 +77,9 @@ def main(
         strict=True,
         only_inside=True,
         blinking_ratio=0.5,
+        # NUOVI
+        blinking_tolerance=0.1,
+        long_track_min_snaps=20,
     )
 
     if params.radial_map and not paths.radial_dir.exists():
