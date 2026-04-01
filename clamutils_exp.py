@@ -24,7 +24,7 @@ class Output:
         
 
 class Filters:
-    def __init__(self,lifetime_min=0,threshold_dist=0,threshold_dist_tot=0,dist_step=1,strict=False,only_inside=False,blinking_ratio=0):
+    def __init__(self,lifetime_min=0,threshold_dist=0,threshold_dist_tot=0,dist_step=1,strict=False,only_inside=False,blinking_ratio=0,blinking_tolerance=0.0,long_track_min_snaps=0):
         self.lifetime_min=lifetime_min              #How long do particles have to live?
         self.threshold_dist=threshold_dist          #How far do they have to go in dist_step to be considered real?
         self.threshold_dist_tot=threshold_dist_tot  #How far do theya have to go in total to be considered real?
@@ -32,6 +32,8 @@ class Filters:
         self.strict=strict                          #Are the first and last frame of a trajectory always kept (False)?
         self.only_inside=only_inside                #Do we only consider particles within frame?
         self.blinking_ratio=blinking_ratio          #How short does the number of frames have to be wrt the time between first and last frame?
+        self.blinking_tolerance=blinking_tolerance  #Tolerance for blinking detection
+        self.long_track_min_snaps=long_track_min_snaps  #Minimum number of snaps for a long track
     
     def reset(self):
         self.lifetime_min=0
@@ -41,6 +43,8 @@ class Filters:
         self.strict=False
         self.only_inside=False
         self.blinking_ratio=0
+        self.blinking_tolerance=0.0
+        self.long_track_min_snaps=0
         
 class Speckle:
     def __init__(self,field,diam,pix,ctrp=0, lin=False, axis=0):
