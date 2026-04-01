@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import asdict
 from pathlib import Path
 from datetime import datetime
+from typing import Optional
 import json
 
 from clam_pipeline.io import build_paths, load_settings, load_trajectories_txt, save_df_csv
@@ -35,7 +36,9 @@ def main(
     radial_dir: Path,
     results_dir: Path,
     exp_id: int = 68,
-) -> None:
+    params: Optional[AnalysisParams] = None,
+    fparams: Optional[FilterParams] = None,
+) -> dict:
     paths = build_paths(
         code_dir=code_dir,
         traj_dir=traj_dir,
@@ -58,29 +61,30 @@ def main(
     run_dir = paths.runs_dir / run_id
     run_dir.mkdir(parents=True, exist_ok=True)
 
-    params = AnalysisParams(
-        diam=10,
-        dt=0.1,
-        particle_show=5,
-        disc_radius=350,
-        tumbling_threshold=5.0,
-        radial_map=True,
-        flux_cg_in=1,
-        flux_cg_out=150,
-        nskip=1,
-    )
-    fparams = FilterParams(
-        lifetime_min=0,
-        threshold_dist=1,
-        threshold_dist_tot=3,
-        dist_step=1,
-        strict=True,
-        only_inside=True,
-        blinking_ratio=0.5,
-        # NUOVI
-        blinking_tolerance=0.1,
-        long_track_min_snaps=20,
-    )
+    if params is None:
+        params = AnalysisParams(
+            diam=10,
+            dt=0.1,
+            particle_show=5,
+            disc_radius=350,
+            tumbling_threshold=5.0,
+            radial_map=True,
+            flux_cg_in=1,
+            flux_cg_out=150,
+            nskip=1,
+        )
+    if fparams is None:
+        fparams = FilterParams(
+            lifetime_min=0,
+            threshold_dist=1,
+            threshold_dist_tot=3,
+            dist_step=1,
+            strict=True,
+            only_inside=True,
+            blinking_ratio=0.5,
+            blinking_tolerance=0.1,
+            long_track_min_snaps=20,
+        )
 
     if params.radial_map and not paths.radial_dir.exists():
         raise FileNotFoundError(f"radial_map=True but missing radial_dir: {paths.radial_dir}")
@@ -190,3 +194,14 @@ def main(
     print("  - tumb_dur_exp*.txt")
     print("  - N_dist_exp*.txt")
     print("  - N_dist_compare_exp*.txt")
+
+    return {
+        "flat_results_dir": flat_results_dir,
+        "settings_txt": paths.settings_txt,
+        "illum_dir": paths.illum_dir,
+        "run_dir": run_dir,
+        "exp_id": exp_id,
+        "params": params,
+        "disc_radius": params.disc_radius,
+        "tumbling_threshold": params.tumbling_threshold,
+    }
