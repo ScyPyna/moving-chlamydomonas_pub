@@ -30,7 +30,7 @@ def _show_plots(info: dict) -> None:
     rd = info["flat_results_dir"]
     sp = info["settings_txt"]
     illum = info["illum_dir"]
-    eid = info["exp_id"]
+    eid = info["exp_ids"][0]
     disc = int(info["disc_radius"])
     thr = info["tumbling_threshold"]
 
@@ -106,7 +106,11 @@ results_dir = st.text_input(
     placeholder="/home/utente/risultati",
 )
 
-exp_id = st.number_input("Experiment ID", min_value=1, value=68, step=1)
+exp_ids_input = st.text_input(
+    "Experiment ID (uno o più, separati da virgola)",
+    value="68",
+    help="Es: 68   oppure   68, 69, 73  per analizzarli insieme e ottenere anche il merge",
+)
 
 # ---------------------------------------------------------------------------
 # 3. Parametri
@@ -144,6 +148,16 @@ with st.expander("Filtri traiettorie (FilterParams)"):
 st.header("4. Avvia")
 
 if st.button("▶ Avvia analisi", type="primary"):
+
+    # Parsing exp_ids
+    try:
+        exp_ids_list = [int(x.strip()) for x in exp_ids_input.split(",") if x.strip()]
+    except ValueError:
+        st.error("Experiment ID non valido. Inserisci numeri interi separati da virgola (es: 68, 69).")
+        st.stop()
+    if not exp_ids_list:
+        st.error("Inserisci almeno un Experiment ID.")
+        st.stop()
 
     # Validazione percorsi obbligatori
     missing = []
@@ -209,11 +223,13 @@ if st.button("▶ Avvia analisi", type="primary"):
                     illum_dir=Path(illum_dir.strip()),
                     radial_dir=Path(radial_dir.strip()) if radial_dir.strip() else Path("."),
                     results_dir=results_path,
-                    exp_id=int(exp_id),
+                    exp_ids=exp_ids_list,
                     params=params,
                     fparams=fparams,
                 )
-            st.success(f"✅ Analisi completata!\n\n**Output salvato in:** `{plot_info['run_dir']}`")
+            ids_str = ", ".join(str(i) for i in plot_info["exp_ids"])
+            merge_note = "\n\n📁 Merge disponibile in: `merged/`" if len(plot_info["exp_ids"]) > 1 else ""
+            st.success(f"✅ Analisi completata! (exp: {ids_str})\n\n**Output salvato in:** `{plot_info['run_dir']}`{merge_note}")
         except Exception:
             st.error("❌ Errore durante l'analisi:")
             st.code(traceback.format_exc())
