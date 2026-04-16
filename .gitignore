@@ -1,21 +1,40 @@
-# Ignora tutto
-*
+# --- Dati grezzi e file pesanti ---
+*.h5
+*.pkl
+*.avi
+*.tiff
+*.tif
+*.pdf
 
-# Ma non le cartelle che ci servono
-!analyses/
-!analyses/**
-!clam_pipeline/
-!clam_pipeline/**
-!tracking_from_video/
-!tracking_from_video/**
+# --- Output di analisi (file txt generati dalla pipeline) ---
+Theta_*.txt
+Flux_*.txt
+angle_*.txt
+omega_*.txt
+tumb_*.txt
+N_dist_*.txt
+tAlgae*.txt
 
-# E non i file singoli
-!clamutils_exp.py
-!count.py
-!run_pipeline.py
-!diagnostica.ipynb
-!app.py
-!pyproject.toml
+# --- Cartelle di output ---
+results/
+debug_exports/
+good_results/
+analyses/__pycache__/
 
-# E non il .gitignore stesso
-!.gitignore
+# --- Python cache ---
+__pycache__/
+*.pyc
+*.pyo
+.eggs/
+*.egg-info/
+dist/
+build/
+
+# --- Ambienti virtuali ---
+.venv/
+.trajs/
+env/
+
+# --- Editor / OS ---
+.DS_Store
+*.swp

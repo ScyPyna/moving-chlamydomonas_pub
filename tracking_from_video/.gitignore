@@ -1,19 +1,8 @@
-# Ignora tutto
-*
+# Risultati di tracking (file pesanti)
+results_*/
+*.h5
+*.pkl
 
-# Ma non le cartelle che ci servono
-!analyses/
-!analyses/**
-!clam_pipeline/
-!clam_pipeline/**
-!tracking_from_video/
-!tracking_from_video/**
-
-# E non i file singoli
-!clamutils_exp.py
-!count.py
-!run_pipeline.py
-!diagnostica.ipynb
-
-# E non il .gitignore stesso
-!.gitignore
+# Python cache
+__pycache__/
+*.pyc
