@@ -140,6 +140,15 @@ def plot_density_vs_distance(
     """
     settings = load_settings(settings_path)
 
+    # Se illum_id_for_normalization non è stato sovrascritto dal chiamante (default=7)
+    # e sono stati forniti exp_ids specifici, usa l'ill_id del primo esperimento valido.
+    if illum_id_for_normalization == 7 and exp_ids is not None:
+        for eid in exp_ids:
+            row = settings.loc[settings["exps"] == eid]
+            if not row.empty:
+                illum_id_for_normalization = int(row.iloc[0]["ill"])
+                break
+
     fig, ax = plt.subplots(1, 1, figsize=figsize, dpi=dpi)
 
     if exp_ids is not None:

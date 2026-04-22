@@ -73,7 +73,13 @@ def plot_nt_stats(
         if win >= 5:
             n_mean = savgol_filter(n_mean, window_length=win, polyorder=2)
             ndisc_mean = savgol_filter(ndisc_mean, window_length=win, polyorder=2)
-            dist_mean = savgol_filter(dist_mean, window_length=win, polyorder=2)
+            # dist_mean può contenere NaN (frame senza particelle): interpola prima di smoothare
+            valid = np.isfinite(dist_mean)
+            if valid.any():
+                idx = np.arange(len(dist_mean))
+                dist_mean_filled = np.interp(idx, idx[valid], dist_mean[valid])
+                dist_mean = savgol_filter(dist_mean_filled, window_length=win, polyorder=2)
+                dist_mean[~valid] = np.nan  # ripristina NaN dove non c'erano dati
 
     fig, axs = plt.subplots(3, 1, figsize=figsize, dpi=dpi, sharex=True)
 

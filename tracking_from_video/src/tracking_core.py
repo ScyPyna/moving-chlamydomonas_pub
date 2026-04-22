@@ -111,5 +111,4 @@ def save_outputs(df: pd.DataFrame, out_base: Path, filter_stubs: int) -> None:
 
     # Export txt compatibile col resto della pipeline
     txt_path = out_base.with_suffix(".txt")
-    header = ["y", "x", "particle"]
-    df_f.to_csv(txt_path, index=True, columns=header)
+    df_f.to_csv(txt_path, index=False, columns=["frame", "y", "x", "particle"])

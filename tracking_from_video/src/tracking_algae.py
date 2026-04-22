@@ -32,6 +32,9 @@ def process_one(video_path: Path, out_dir: Path, cfg_path: Path, overwrite: bool
         nFrames = frames.shape[0]
         del frames
     else:
+        if h5_path.exists() and overwrite:
+            log.info("Removing stale H5 (overwrite): %s", h5_path.name)
+            h5_path.unlink()
         log.info("Load video -> RAM: %s", video_path.name)
         frames, fps, duration = load_video_to_ram(video_path, cfg.channel)
         nFrames = frames.shape[0]

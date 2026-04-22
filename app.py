@@ -30,9 +30,12 @@ def _show_plots(info: dict) -> None:
     rd = info["flat_results_dir"]
     sp = info["settings_txt"]
     illum = info["illum_dir"]
-    eid = info["exp_ids"][0]
+    eids = info["exp_ids"]
     disc = int(info["disc_radius"])
     thr = info["tumbling_threshold"]
+    t_inner = info.get("theta_inner_circle", 300.0)
+    t_thick = info.get("theta_thickness", 0.0)
+    t_maxd  = info.get("theta_max_distance", 800.0)
 
     tabs = st.tabs([
         "Theta", "Flux", "N(t)", "Angle", "Omega",
@@ -41,21 +44,23 @@ def _show_plots(info: dict) -> None:
 
     plots = [
         ("Theta", lambda: plot_theta_distribution(
-            results_dir=rd, settings_path=sp, exp_ids=[eid], save_path=None)),
+            results_dir=rd, settings_path=sp, exp_ids=eids,
+            inner_circle=t_inner, thickness_circle=t_thick,
+            max_distance=t_maxd, save_path=None)),
         ("Flux", lambda: plot_flux(
-            results_dir=rd, settings_path=sp, exp_ids=[eid], disc_radius=disc, save_path=None)),
+            results_dir=rd, settings_path=sp, exp_ids=eids, disc_radius=disc, save_path=None)),
         ("N(t)", lambda: plot_nt_stats(
-            results_dir=rd, exp_ids=[eid], disc_radius=disc, save_path=None)),
+            results_dir=rd, exp_ids=eids, disc_radius=disc, save_path=None)),
         ("Angle", lambda: plot_angle_distribution(
-            results_dir=rd, exp_ids=[eid], save_path=None)),
+            results_dir=rd, exp_ids=eids, save_path=None)),
         ("Omega", lambda: plot_omega_distribution(
-            results_dir=rd, exp_ids=[eid], save_path=None)),
+            results_dir=rd, exp_ids=eids, save_path=None)),
         ("Density vs dist", lambda: plot_density_vs_distance(
-            results_dir=rd, settings_path=sp, illum_dir=illum, exp_ids=[eid], save_path=None)),
+            results_dir=rd, settings_path=sp, illum_dir=illum, exp_ids=eids, save_path=None)),
         ("Tumbling θ", lambda: plot_tumbling_vs_gradient(
-            results_dir=rd, exp_ids=[eid], save_path=None)),
+            results_dir=rd, exp_ids=eids, tumbling_threshold=thr, save_path=None)),
         ("Tumbling duration", lambda: plot_tumbling_duration_vs_distance(
-            results_dir=rd, exp_ids=[eid], save_path=None)),
+            results_dir=rd, exp_ids=eids, tumbling_threshold=thr, save_path=None)),
     ]
 
     for tab, (name, fn) in zip(tabs, plots):
@@ -127,6 +132,18 @@ with st.expander("Parametri analisi (AnalysisParams)"):
         flux_cg_out     = st.number_input("flux_cg_out (frames)", value=150, step=10)
         nskip           = st.number_input("nskip", value=1, step=1)
         radial_map      = st.checkbox("Usa mappa radiale (radial_map)", value=True)
+
+with st.expander("Parametri plot Theta P(θ)"):
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        theta_inner_circle  = st.number_input("inner_circle (µm)", value=300.0, step=10.0,
+                                              help="Soglia radiale: sotto = verde (dentro), sopra = giallo (fuori)")
+    with col2:
+        theta_thickness     = st.number_input("thickness_circle (µm)", value=0.0, step=5.0,
+                                              help="Spessore zona anulare da escludere attorno a inner_circle")
+    with col3:
+        theta_max_distance  = st.number_input("max_distance (µm)", value=800.0, step=10.0,
+                                              help="Distanza massima considerata nel subplot giallo")
 
 with st.expander("Filtri traiettorie (FilterParams)"):
     col1, col2 = st.columns(2)
@@ -240,5 +257,8 @@ if st.button("▶ Avvia analisi", type="primary"):
             st.text(log_output)
 
     if plot_info is not None:
+        plot_info["theta_inner_circle"] = float(theta_inner_circle)
+        plot_info["theta_thickness"]    = float(theta_thickness)
+        plot_info["theta_max_distance"] = float(theta_max_distance)
         st.header("5. Risultati")
         _show_plots(plot_info)

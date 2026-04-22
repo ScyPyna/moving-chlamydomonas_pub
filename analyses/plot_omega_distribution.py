@@ -70,8 +70,9 @@ def plot_omega_distribution(
     fig, ax = plt.subplots(1, 1, figsize=figsize, dpi=dpi)
     ax.hist(omega_sel, bins=bins, density=True, alpha=0.7)
 
-    ax.set_xlabel(r"omega [rad/s]")
-    ax.set_ylabel("probability density")
+    ax.set_xlabel(r"omega value [rad/s]")
+    ax.set_ylabel("probability")
+    ax.set_yscale("log")
     ax.set_title(f"Omega distribution, {distance_min:.0f} < d < {distance_max:.0f} µm")
 
     plt.tight_layout()

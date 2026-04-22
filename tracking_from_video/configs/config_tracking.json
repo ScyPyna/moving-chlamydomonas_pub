@@ -1,14 +1,14 @@
 {
   "channel": 2,
   "background_subtraction": true,
-  "background_method": "median",
+  "background_method": "mean",
   "locate": {
     "diameter": 5,
     "minmass": 120,
     "invert": false
   },
   "link": {
-    "search_range": 30,
+    "search_range": 15,
     "adaptive_stop": 5,
     "adaptive_step": 0.98,
     "memory": null
@@ -16,5 +16,5 @@
   "post": {
     "filter_stubs": 0
   },
-  "video_example": "/home/user/Scrivania/Videos/January2024/tAlgae98.avi"
+  "video_example": "/home/user/Scrivania/talgae_exp/tAlgae2.avi"
 }

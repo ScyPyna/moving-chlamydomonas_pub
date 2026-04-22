@@ -28,6 +28,19 @@ st.title("🎯 Tracking — Tuning parametri")
 CONFIG_PATH = Path(__file__).parent / "configs" / "config_tracking.json"
 
 
+def _load_saved_config() -> dict:
+    if CONFIG_PATH.exists():
+        try:
+            with open(CONFIG_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {}
+
+
+_cfg = _load_saved_config()
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -57,18 +70,23 @@ def _get_frames(video_path: str, channel: int, bg_sub: bool, bg_method: str) -> 
 st.header("1. Video")
 video_path = st.text_input(
     "Path al video (.avi)",
+    value=_cfg.get("video_example", ""),
     placeholder="/home/utente/dati/tAlgae68.avi",
 )
 
-channel = st.selectbox("Canale colore", options=[0, 1, 2], index=2,
+channel = st.selectbox("Canale colore", options=[0, 1, 2],
+                        index=_cfg.get("channel", 2),
                         help="0=R, 1=G, 2=B")
 
 # ---------------------------------------------------------------------------
 # 2. Background
 # ---------------------------------------------------------------------------
 st.header("2. Background")
-bg_sub = st.checkbox("Sottrai background", value=True)
-bg_method = st.radio("Metodo", ["median", "mean"], horizontal=True, disabled=not bg_sub)
+bg_sub = st.checkbox("Sottrai background", value=_cfg.get("background_subtraction", True))
+_saved_method = _cfg.get("background_method", "mean")
+bg_method = st.radio("Metodo", ["median", "mean"], horizontal=True,
+                     index=0 if _saved_method == "median" else 1,
+                     disabled=not bg_sub)
 
 # ---------------------------------------------------------------------------
 # 3. Parametri locate
@@ -77,11 +95,13 @@ st.header("3. Tuning `tp.locate`")
 
 col1, col2, col3 = st.columns(3)
 with col1:
-    diameter = st.slider("diameter (px, dispari)", min_value=3, max_value=21, value=5, step=2)
+    diameter = st.slider("diameter (px, dispari)", min_value=3, max_value=21,
+                         value=_cfg.get("locate", {}).get("diameter", 5), step=2)
 with col2:
-    minmass = st.slider("minmass", min_value=10, max_value=500, value=120, step=10)
+    minmass = st.slider("minmass", min_value=10, max_value=500,
+                        value=_cfg.get("locate", {}).get("minmass", 120), step=10)
 with col3:
-    invert = st.checkbox("invert", value=False)
+    invert = st.checkbox("invert", value=_cfg.get("locate", {}).get("invert", False))
 
 # ---------------------------------------------------------------------------
 # 4. Preview su frame singolo
@@ -163,22 +183,25 @@ with col_grid:
 # ---------------------------------------------------------------------------
 st.header("5. Parametri `tp.link`")
 col1, col2, col3, col4 = st.columns(4)
+_link = _cfg.get("link", {})
 with col1:
-    search_range = st.number_input("search_range (px)", min_value=1, value=30, step=1)
+    search_range = st.number_input("search_range (px)", min_value=1,
+                                   value=_link.get("search_range", 30), step=1)
 with col2:
-    adaptive_stop = st.number_input("adaptive_stop (px)", min_value=1, value=5, step=1)
+    adaptive_stop = st.number_input("adaptive_stop (px)", min_value=1,
+                                    value=_link.get("adaptive_stop", 5), step=1)
 with col3:
     adaptive_step = st.number_input("adaptive_step", min_value=0.01, max_value=1.0,
-                                    value=0.98, step=0.01, format="%.2f")
+                                    value=_link.get("adaptive_step", 0.98),
+                                    step=0.01, format="%.2f")
 with col4:
-    filter_stubs = st.number_input("filter_stubs (frame minimi)", min_value=0, value=0, step=1)
+    filter_stubs = st.number_input("filter_stubs (frame minimi)", min_value=0,
+                                   value=_cfg.get("post", {}).get("filter_stubs", 0), step=1)
 
 # ---------------------------------------------------------------------------
-# 6. Salva config & avvia tracking
+# 6. Salva config
 # ---------------------------------------------------------------------------
-st.header("6. Salva config & avvia tracking")
-
-col_save, col_run = st.columns(2)
+st.header("6. Salva config")
 
 cfg_dict = {
     "channel": channel,
@@ -201,78 +224,115 @@ cfg_dict = {
     "video_example": video_path,
 }
 
-with col_save:
-    if st.button("💾 Salva config"):
-        CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+col_name, col_btn = st.columns([3, 1])
+with col_name:
+    config_name = st.text_input(
+        "Nome config",
+        value="config_tracking",
+        help="Salvata in configs/<nome>.json — usa nomi diversi per parametri diversi (es. config_bright, config_dim)",
+    )
+with col_btn:
+    st.write("")
+    st.write("")
+    if st.button("💾 Salva"):
+        save_path = CONFIG_PATH.parent / f"{config_name.strip() or 'config_tracking'}.json"
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(save_path, "w", encoding="utf-8") as f:
             json.dump(cfg_dict, f, indent=2)
-        st.success(f"Config salvata in `{CONFIG_PATH}`")
-        with st.expander("Contenuto config"):
+        st.success(f"Salvata: `{save_path.name}`")
+        with st.expander("Contenuto"):
             st.json(cfg_dict)
 
-with col_run:
-    video_dir = st.text_input(
-        "Cartella video per il batch (tAlgae*.avi)",
-        value=str(Path(video_path).parent),
-    )
+# ---------------------------------------------------------------------------
+# 7. Avvia tracking batch
+# ---------------------------------------------------------------------------
+st.header("7. Avvia tracking batch")
 
-    # Lista i video disponibili nella cartella
-    selected_files = []
-    if video_dir.strip() and Path(video_dir.strip()).is_dir():
-        available = sorted(Path(video_dir.strip()).glob("tAlgae*.avi"))
-        if available:
-            selected_files = st.multiselect(
-                "Video da processare",
-                options=[v.name for v in available],
-                default=[v.name for v in available],
-                help="Deseleziona i video che non vuoi processare",
+CONFIGS_DIR = CONFIG_PATH.parent
+available_configs = sorted(CONFIGS_DIR.glob("*.json"))
+
+if not available_configs:
+    st.warning("Nessuna config trovata in `configs/`. Salvane almeno una nella sezione 6.")
+    st.stop()
+
+video_dir = st.text_input(
+    "Cartella video (tAlgae*.avi)",
+    value=str(Path(video_path).parent) if video_path.strip() else "",
+    placeholder="/home/utente/dati/video",
+)
+
+available_videos = []
+if video_dir.strip() and Path(video_dir.strip()).is_dir():
+    available_videos = sorted(Path(video_dir.strip()).glob("tAlgae*.avi"))
+    if not available_videos:
+        st.warning("Nessun file tAlgae*.avi trovato nella cartella.")
+else:
+    st.info("Inserisci una cartella valida per vedere i video disponibili.")
+
+out_dir = st.text_input(
+    "Cartella output tracking",
+    placeholder="/home/utente/dati/risultati_tracking",
+)
+overwrite = st.checkbox("Ricalcola anche se output già esiste", value=False)
+
+# Assegnazione video → config
+st.subheader("Assegna video ai gruppi di config")
+st.caption("Per ogni config disponibile seleziona i video da processare con quei parametri.")
+
+groups: dict[str, list[str]] = {}
+assigned: set[str] = set()
+
+for cfg_file in available_configs:
+    with st.expander(f"📄 {cfg_file.name}", expanded=False):
+        try:
+            with open(cfg_file) as f:
+                c = json.load(f)
+            st.caption(
+                f"diameter={c.get('locate',{}).get('diameter','?')}  "
+                f"minmass={c.get('locate',{}).get('minmass','?')}  "
+                f"bg={c.get('background_method','?')}"
             )
-        else:
-            st.warning("Nessun file tAlgae*.avi trovato nella cartella.")
+        except Exception:
+            pass
+        opts = [v.name for v in available_videos if v.name not in assigned]
+        sel = st.multiselect(
+            "Video da processare con questa config",
+            options=[v.name for v in available_videos],
+            default=[],
+            key=f"grp_{cfg_file.name}",
+        )
+        if sel:
+            groups[str(cfg_file)] = sel
+            assigned.update(sel)
+
+if st.button("▶ Avvia tutti i gruppi", type="primary"):
+    if not out_dir.strip():
+        st.error("Inserisci la cartella di output.")
+    elif not groups:
+        st.error("Assegna almeno un video a una config.")
     else:
-        st.info("Inserisci una cartella valida per vedere i video disponibili.")
-
-    out_dir = st.text_input(
-        "Cartella output tracking",
-        placeholder="/home/utente/dati/risultati_tracking",
-    )
-    overwrite = st.checkbox("Ricalcola anche se output già esiste", value=False)
-
-    if st.button("▶ Avvia tracking batch", type="primary"):
-        if not out_dir.strip():
-            st.error("Inserisci la cartella di output.")
-        elif not selected_files:
-            st.error("Seleziona almeno un video.")
-        else:
-            # Salva la config prima di lanciare
-            CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-            with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-                json.dump(cfg_dict, f, indent=2)
-
-            script = Path(__file__).parent / "src" / "tracking_algae.py"
+        script = Path(__file__).parent / "src" / "tracking_algae.py"
+        for cfg_path_str, files in groups.items():
+            st.write(f"**{Path(cfg_path_str).name}** → {', '.join(files)}")
             cmd = [
                 sys.executable, str(script),
                 "--input", video_dir.strip(),
-                "--config", str(CONFIG_PATH),
+                "--config", cfg_path_str,
                 "--out", out_dir.strip(),
-                "--files", *selected_files,
+                "--files", *files,
             ]
             if overwrite:
                 cmd.append("--overwrite")
-
-            st.info(f"Comando: `{' '.join(cmd)}`")
-            with st.spinner("Tracking in corso... (può richiedere minuti)"):
+            with st.spinner(f"Tracking {Path(cfg_path_str).name} ({len(files)} video)..."):
                 try:
                     result = subprocess.run(
-                        cmd,
-                        capture_output=True,
-                        text=True,
+                        cmd, capture_output=True, text=True,
                         cwd=str(Path(__file__).parent),
                     )
                     if result.returncode == 0:
-                        st.success(f"✅ Tracking completato! ({len(selected_files)} video)")
+                        st.success(f"✅ {Path(cfg_path_str).name}: {len(files)} video completati")
                     else:
-                        st.error("❌ Errore durante il tracking:")
+                        st.error(f"❌ Errore in {Path(cfg_path_str).name}")
                     if result.stdout:
                         with st.expander("stdout"):
                             st.text(result.stdout)
@@ -280,5 +340,5 @@ with col_run:
                         with st.expander("stderr"):
                             st.text(result.stderr)
                 except Exception:
-                    st.error("Errore nel lancio del processo:")
+                    st.error("Errore nel lancio:")
                     st.code(traceback.format_exc())

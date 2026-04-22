@@ -9,14 +9,14 @@ import matplotlib.pyplot as plt
 from analyses.common import bin_data, COLOR_PINK
 
 
-def _load_tumbling_orientation(results_dir: Path, exp_ids: Sequence[int]):
+def _load_tumbling_orientation(results_dir: Path, exp_ids: Sequence[int], tumbling_threshold: float = 5.0):
     theta_list = []
     dist_list = []
     dur_list = []
     time_list = []
 
     for exp_id in exp_ids:
-        path = results_dir / f"tumb_exp{exp_id}_tthres5.0.txt"
+        path = results_dir / f"tumb_exp{exp_id}_tthres{tumbling_threshold:.1f}.txt"
         if not path.exists():
             continue
 
@@ -36,13 +36,13 @@ def _load_tumbling_orientation(results_dir: Path, exp_ids: Sequence[int]):
     return theta_list, dist_list, dur_list, time_list
 
 
-def _load_tumbling_duration(results_dir: Path, exp_ids: Sequence[int]):
+def _load_tumbling_duration(results_dir: Path, exp_ids: Sequence[int], tumbling_threshold: float = 5.0):
     dist_list = []
     dur_list = []
     time_list = []
 
     for exp_id in exp_ids:
-        path = results_dir / f"tumb_dur_exp{exp_id}_tthres5.0.txt"
+        path = results_dir / f"tumb_dur_exp{exp_id}_tthres{tumbling_threshold:.1f}.txt"
         if not path.exists():
             continue
 
@@ -64,6 +64,7 @@ def _load_tumbling_duration(results_dir: Path, exp_ids: Sequence[int]):
 def plot_tumbling_vs_gradient(
     results_dir: Path,
     exp_ids: Sequence[int],
+    tumbling_threshold: float = 5.0,
     distance_min: float = 300.0,
     distance_max: float = 500.0,
     n_bins: int = 5,
@@ -71,7 +72,11 @@ def plot_tumbling_vs_gradient(
     dpi: int = 300,
     save_path: Optional[Path] = None,
 ):
-    theta_list, dist_list, dur_list, _ = _load_tumbling_orientation(results_dir, exp_ids)
+    """
+    x = theta (angolo run rispetto al gradiente di intensità)
+    y = average run duration (s)
+    """
+    theta_list, dist_list, dur_list, _ = _load_tumbling_orientation(results_dir, exp_ids, tumbling_threshold)
 
     if not theta_list:
         raise FileNotFoundError("No tumb_exp*.txt files found for selected experiments.")
@@ -112,12 +117,13 @@ def plot_tumbling_vs_gradient(
 def plot_tumbling_duration_vs_distance(
     results_dir: Path,
     exp_ids: Sequence[int],
+    tumbling_threshold: float = 5.0,
     n_bins: int = 10,
     figsize=(6.0, 4.0),
     dpi: int = 300,
     save_path: Optional[Path] = None,
 ):
-    dist_list, dur_list, _ = _load_tumbling_duration(results_dir, exp_ids)
+    dist_list, dur_list, _ = _load_tumbling_duration(results_dir, exp_ids, tumbling_threshold)
 
     if not dist_list:
         raise FileNotFoundError("No tumb_dur_exp*.txt files found for selected experiments.")
