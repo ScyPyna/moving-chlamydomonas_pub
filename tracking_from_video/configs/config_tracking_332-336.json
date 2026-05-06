@@ -1,0 +1,20 @@
+{
+  "channel": 2,
+  "background_subtraction": true,
+  "background_method": "mean",
+  "locate": {
+    "diameter": 5,
+    "minmass": 150,
+    "invert": false
+  },
+  "link": {
+    "search_range": 9,
+    "adaptive_stop": 5,
+    "adaptive_step": 0.98,
+    "memory": null
+  },
+  "post": {
+    "filter_stubs": 0
+  },
+  "video_example": ""
+}

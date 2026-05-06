@@ -1,0 +1,49 @@
+# --- Dati grezzi e file pesanti ---
+*.h5
+*.pkl
+*.avi
+*.tiff
+*.tif
+*.pdf
+
+# --- Output di analisi (file txt generati dalla pipeline) ---
+Theta_*.txt
+Flux_*.txt
+angle_*.txt
+omega_*.txt
+tumb_*.txt
+N_dist_*.txt
+tAlgae*.txt
+
+# --- Cartelle di output ---
+results/
+debug_exports/
+good_results/
+analyses/__pycache__/
+
+# --- Python cache ---
+__pycache__/
+*.pyc
+*.pyo
+.eggs/
+*.egg-info/
+dist/
+build/
+
+# --- Ambienti virtuali ---
+.venv/
+.trajs/
+env/
+
+# --- Cartelle locali non da condividere ---
+leftpanel_res/
+old_results/
+.claude/
+
+# --- File generati / dati di laboratorio locali ---
+Clamidomoni_settings.txt
+diagnostica.ipynb
+
+# --- Editor / OS ---
+.DS_Store
+*.swp
