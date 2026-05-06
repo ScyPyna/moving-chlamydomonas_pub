@@ -35,6 +35,15 @@ build/
 .trajs/
 env/
 
+# --- Cartelle locali non da condividere ---
+leftpanel_res/
+old_results/
+.claude/
+
+# --- File generati / dati di laboratorio locali ---
+Clamidomoni_settings.txt
+diagnostica.ipynb
+
 # --- Editor / OS ---
 .DS_Store
 *.swp

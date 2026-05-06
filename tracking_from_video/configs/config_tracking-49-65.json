@@ -4,11 +4,11 @@
   "background_method": "mean",
   "locate": {
     "diameter": 5,
-    "minmass": 120,
+    "minmass": 180,
     "invert": false
   },
   "link": {
-    "search_range": 15,
+    "search_range": 10,
     "adaptive_stop": 5,
     "adaptive_step": 0.98,
     "memory": null
@@ -16,5 +16,5 @@
   "post": {
     "filter_stubs": 0
   },
-  "video_example": ""
+  "video_example": "/home/user/Scrivania/talgae_exp/tAlgae49.avi"
 }
