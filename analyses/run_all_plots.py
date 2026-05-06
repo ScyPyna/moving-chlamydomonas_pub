@@ -32,6 +32,12 @@ def main():
         required=True,
         help="Experiment IDs to include, e.g. --exp 68 or --exp 68 73",
     )
+    parser.add_argument(
+        "--illum-dir",
+        type=Path,
+        required=True,
+        help="Path to the folder containing the illumination*.tiff files.",
+    )
     args = parser.parse_args()
     exp_ids = args.exp
 
@@ -39,7 +45,7 @@ def main():
     legacy_results_dir = base
     settings_path = base / "Clamidomoni_settings.txt"
     figs_dir = base / "results" / "figs"
-    illum_dir = Path("/home/user/Scrivania/Videos/December2023/Quantitative/forTraj").resolve()
+    illum_dir = args.illum_dir.resolve()
 
     figs_dir.mkdir(parents=True, exist_ok=True)
 
