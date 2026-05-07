@@ -79,7 +79,7 @@ st.title("🔬 Clam Pipeline — Analisi traiettorie")
 # 1. Macchina
 # ---------------------------------------------------------------------------
 st.header("1. Macchina")
-machine = st.radio("Quale macchina è stata usata?", ["superK", "laserGlow"], horizontal=True)
+machine = st.radio("Quale macchina è stata usata?", ["microscope2D", "photonicsLab", "lightfield"], horizontal=True)
 
 # ---------------------------------------------------------------------------
 # 2. Percorsi
