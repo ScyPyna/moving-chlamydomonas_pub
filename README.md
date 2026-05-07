@@ -184,7 +184,17 @@ The app is divided into numbered sections:
 
 **6. Save config** — when the parameters look good, give the configuration a name (e.g. `config_exp68`) and click **Salva**. The file is saved in `tracking_from_video/configs/`. You can save multiple configs with different parameters and assign them to different videos in the next step.
 
-**7. Batch tracking launch** — enter the folder containing the videos and the output folder, then assign each video to a configuration using the expandable panels. Click **▶ Avvia tutti i gruppi** to start. Example paths:
+**7. Batch tracking launch** — enter the folder containing the videos and the output folder, then assign each video to a configuration using the expandable panels. Click **▶ Avvia tutti i gruppi** to start.
+
+The video list is automatically filtered by the machine selected at the top of the page:
+
+| Machine | Video naming convention | Example |
+|---|---|---|
+| `microscope2D` | `tAlgae*.avi` | `tAlgae68.avi` |
+| `photonicsLab` | `tPhot*.avi` | `tPhot12.avi` |
+| `lightfield` | `td*.avi` | `td5.avi` |
+
+Example paths:
 
 | Field | Example |
 |---|---|
