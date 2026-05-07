@@ -25,6 +25,14 @@ import streamlit as st
 st.set_page_config(page_title="Tracking Tuning", page_icon="🎯", layout="wide")
 st.title("🎯 Tracking — Tuning parametri")
 
+MACHINE_GLOB = {
+    "microscope2D":  "tAlgae*.avi",
+    "photonicsLab":  "tPhot*.avi",
+    "lightfield":    "td*.avi",
+}
+machine = st.radio("Macchina", list(MACHINE_GLOB.keys()), horizontal=True)
+glob_pattern = MACHINE_GLOB[machine]
+
 CONFIG_PATH = Path(__file__).parent / "configs" / "config_tracking.json"
 
 
@@ -256,16 +264,16 @@ if not available_configs:
     st.stop()
 
 video_dir = st.text_input(
-    "Cartella video (tAlgae*.avi)",
+    f"Cartella video ({glob_pattern})",
     value=str(Path(video_path).parent) if video_path.strip() else "",
-    placeholder="/home/utente/dati/video",
+    placeholder="/home/utente/nas_public/tAlgae_exp",
 )
 
 available_videos = []
 if video_dir.strip() and Path(video_dir.strip()).is_dir():
-    available_videos = sorted(Path(video_dir.strip()).glob("tAlgae*.avi"))
+    available_videos = sorted(Path(video_dir.strip()).glob(glob_pattern))
     if not available_videos:
-        st.warning("Nessun file tAlgae*.avi trovato nella cartella.")
+        st.warning(f"Nessun file {glob_pattern} trovato nella cartella.")
 else:
     st.info("Inserisci una cartella valida per vedere i video disponibili.")
 
