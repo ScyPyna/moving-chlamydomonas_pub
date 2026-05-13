@@ -128,7 +128,19 @@ def main(
             raise ValueError(f"Experiment {exp_id} not found in settings.")
         row = row_df.iloc[0]
 
-        traj_path = paths.traj_dir / f"tAlgae{exp_id}.txt"
+        _prefixes = ["tAlgae", "tPhot", "td"]
+        traj_path = next(
+            (paths.traj_dir / f"{p}{exp_id}.txt"
+             for p in _prefixes
+             if (paths.traj_dir / f"{p}{exp_id}.txt").exists()),
+            None,
+        )
+        if traj_path is None:
+            tried = ", ".join(f"{p}{exp_id}.txt" for p in _prefixes)
+            raise FileNotFoundError(
+                f"No trajectory file for exp {exp_id} in {paths.traj_dir}. "
+                f"Tried: {tried}"
+            )
         traj_df = load_trajectories_txt(traj_path)
 
         outputs = analyze_experiment(
