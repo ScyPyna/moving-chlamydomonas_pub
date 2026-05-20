@@ -291,7 +291,7 @@ def analyze_experiment(
                 _V = _V[:_n]; _Vy = _Vy[:_n]; _dist_y = _dist_y[:_n]
                 _ty = np.full(_n, np.nan)
                 _good = _V > 0
-                _ty[_good] = np.arccos(np.clip(_Vy[_good] / _V[_good], -1.0, 1.0))
+                _ty[_good] = np.arccos(np.clip(-_Vy[_good] / _V[_good], -1.0, 1.0))
                 _m = np.isfinite(_ty) & np.isfinite(_dist_y)
                 if np.any(_m):
                     all_theta_y.append(_ty[_m])
