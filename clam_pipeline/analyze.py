@@ -42,6 +42,7 @@ class FilterParams:
 @dataclass
 class AnalysisOutputs:
     theta: pd.DataFrame
+    theta_y: pd.DataFrame
     flux: pd.DataFrame
     angle: pd.DataFrame
     omega: pd.DataFrame
@@ -144,21 +145,15 @@ def analyze_experiment(
     fparams: FilterParams,
 ) -> AnalysisOutputs:
     if traj_df.empty:
-        empty_theta = pd.DataFrame(columns=["theta", "dist"])
-        empty_flux = pd.DataFrame(columns=["time", "flux"])
-        empty_angle = pd.DataFrame(columns=["angle", "dist", "v"])
-        empty_omega = pd.DataFrame(columns=["omega", "dist", "time"])
-        empty_tumb = pd.DataFrame(columns=["theta", "dist", "duration", "time"])
-        empty_tumb_dur = pd.DataFrame(columns=["dist", "duration", "time"])
-        empty_nt = pd.DataFrame(columns=["N", "n_disc", "dists"])
         return AnalysisOutputs(
-            theta=empty_theta,
-            flux=empty_flux,
-            angle=empty_angle,
-            omega=empty_omega,
-            tumbling_orientation=empty_tumb,
-            tumbling_duration=empty_tumb_dur,
-            nt_stats=empty_nt,
+            theta=pd.DataFrame(columns=["theta", "dist"]),
+            theta_y=pd.DataFrame(columns=["theta_y", "dist"]),
+            flux=pd.DataFrame(columns=["time", "flux"]),
+            angle=pd.DataFrame(columns=["angle", "dist", "v"]),
+            omega=pd.DataFrame(columns=["omega", "dist", "time"]),
+            tumbling_orientation=pd.DataFrame(columns=["theta", "dist", "duration", "time"]),
+            tumbling_duration=pd.DataFrame(columns=["dist", "duration", "time"]),
+            nt_stats=pd.DataFrame(columns=["N", "n_disc", "dists"]),
         )
 
     pix = float(settings_row["pix_arr"])
@@ -220,6 +215,9 @@ def analyze_experiment(
     all_theta = []
     all_theta_dist = []
 
+    all_theta_y = []
+    all_theta_y_dist = []
+
     all_fluxes = []
     all_flux_times = []
 
@@ -270,6 +268,34 @@ def analyze_experiment(
             if np.any(mask_theta):
                 all_theta.append(theta[mask_theta])
                 all_theta_dist.append(dists_theta[mask_theta])
+        except Exception:
+            pass
+
+        try:
+            ps = params.particle_show
+            _inside = (
+                (p.ytraj >= 0) & (p.ytraj <= speckle.Ly) &
+                (p.xtraj >= 0) & (p.xtraj <= speckle.Lx)
+            )
+            _Xin = p.xtraj[_inside]
+            _Yin = p.ytraj[_inside]
+            _Sin = p.snaps[_inside]
+            if len(_Xin) > ps:
+                _dt = (_Sin[ps:] - _Sin[:-ps]) * params.dt
+                _ok = _dt > 0
+                _Vy = np.where(_ok, (_Yin[ps:] - _Yin[:-ps]) / np.where(_ok, _dt, 1), np.nan)
+                _Vx = np.where(_ok, (_Xin[ps:] - _Xin[:-ps]) / np.where(_ok, _dt, 1), np.nan)
+                _V = np.sqrt(_Vx**2 + _Vy**2)
+                _dist_y = cu.moving_average(p.dist[_inside], ps + 1)
+                _n = min(len(_V), len(_dist_y))
+                _V = _V[:_n]; _Vy = _Vy[:_n]; _dist_y = _dist_y[:_n]
+                _ty = np.full(_n, np.nan)
+                _good = _V > 0
+                _ty[_good] = np.arccos(np.clip(_Vy[_good] / _V[_good], -1.0, 1.0))
+                _m = np.isfinite(_ty) & np.isfinite(_dist_y)
+                if np.any(_m):
+                    all_theta_y.append(_ty[_m])
+                    all_theta_y_dist.append(_dist_y[_m])
         except Exception:
             pass
 
@@ -479,6 +505,14 @@ def analyze_experiment(
         if all_theta else pd.DataFrame(columns=["theta", "dist"])
     )
 
+    theta_y_df = (
+        pd.DataFrame({
+            "theta_y": np.concatenate(all_theta_y),
+            "dist": np.concatenate(all_theta_y_dist),
+        })
+        if all_theta_y else pd.DataFrame(columns=["theta_y", "dist"])
+    )
+
     angle_df = (
         pd.DataFrame({
             "angle": np.concatenate(all_angle),
@@ -518,6 +552,7 @@ def analyze_experiment(
 
     return AnalysisOutputs(
         theta=theta_df,
+        theta_y=theta_y_df,
         flux=flux_df,
         angle=angle_df,
         omega=omega_df,

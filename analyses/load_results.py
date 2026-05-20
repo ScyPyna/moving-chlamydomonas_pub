@@ -42,6 +42,10 @@ def load_theta_file(path: Path) -> pd.DataFrame:
     return _load_txt_table(path, ["theta", "dist"])
 
 
+def load_theta_y_file(path: Path) -> pd.DataFrame:
+    return _load_txt_table(path, ["theta_y", "dist"])
+
+
 def load_flux_file(path: Path) -> pd.DataFrame:
     return _load_txt_table(path, ["time", "flux"])
 

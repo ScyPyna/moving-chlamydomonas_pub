@@ -159,6 +159,7 @@ def main(
         out_exp_dir.mkdir(parents=True, exist_ok=True)
 
         save_df_csv(outputs.theta,                out_exp_dir / "theta.csv")
+        save_df_csv(outputs.theta_y,              out_exp_dir / "theta_y.csv")
         save_df_csv(outputs.flux,                 out_exp_dir / "flux.csv")
         save_df_csv(outputs.angle,                out_exp_dir / "angle.csv")
         save_df_csv(outputs.omega,                out_exp_dir / "omega.csv")
@@ -178,7 +179,8 @@ def main(
             "N_raw n_disc_raw dists_raw N n_disc dists\n",
         )
         _save_legacy_txt(outputs.flux,   flat_results_dir / f"Flux_exp{exp_id}_disc{int(params.disc_radius)}.txt", "time flux\n")
-        _save_legacy_txt(outputs.theta,  flat_results_dir / f"Theta_exp{exp_id}_FluoRadialised.txt", "Theta dists\n")
+        _save_legacy_txt(outputs.theta,   flat_results_dir / f"Theta_exp{exp_id}_FluoRadialised.txt", "Theta dists\n")
+        _save_legacy_txt(outputs.theta_y, flat_results_dir / f"ThetaY_exp{exp_id}.txt", "theta_y dist\n")
         _save_legacy_txt(outputs.angle,  flat_results_dir / f"angle_exp{exp_id}.txt", "angle dists v\n")
         _save_legacy_txt(outputs.omega,  flat_results_dir / f"omega_exp{exp_id}.txt", "omega dists time\n")
         _save_legacy_txt(outputs.tumbling_orientation, flat_results_dir / f"tumb_exp{exp_id}_tthres{params.tumbling_threshold:.1f}.txt", "theta dists duration time\n")

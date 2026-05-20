@@ -26,6 +26,7 @@ def _show_plots(info: dict) -> None:
     from analyses.plot_omega_distribution import plot_omega_distribution
     from analyses.plot_density_vs_distance import plot_density_vs_distance
     from analyses.plot_tumbling import plot_tumbling_vs_gradient, plot_tumbling_duration_vs_distance
+    from analyses.plot_theta_y_distribution import plot_theta_y_distribution
 
     rd = info["flat_results_dir"]
     sp = info["settings_txt"]
@@ -38,13 +39,17 @@ def _show_plots(info: dict) -> None:
     t_maxd  = info.get("theta_max_distance", 800.0)
 
     tabs = st.tabs([
-        "Theta", "Flux", "N(t)", "Angle", "Omega",
+        "Theta", "Theta Y", "Flux", "N(t)", "Angle", "Omega",
         "Density vs dist", "Tumbling θ", "Tumbling duration",
     ])
 
     plots = [
         ("Theta", lambda: plot_theta_distribution(
             results_dir=rd, settings_path=sp, exp_ids=eids,
+            inner_circle=t_inner, thickness_circle=t_thick,
+            max_distance=t_maxd, save_path=None)),
+        ("Theta Y", lambda: plot_theta_y_distribution(
+            results_dir=rd, exp_ids=eids,
             inner_circle=t_inner, thickness_circle=t_thick,
             max_distance=t_maxd, save_path=None)),
         ("Flux", lambda: plot_flux(
