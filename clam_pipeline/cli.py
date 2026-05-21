@@ -35,7 +35,7 @@ def _save_merged(all_outputs: dict[int, object], run_dir: Path) -> None:
     merged_dir = run_dir / "merged"
     merged_dir.mkdir(parents=True, exist_ok=True)
 
-    fields = ["theta", "flux", "angle", "omega",
+    fields = ["theta", "theta_y", "flux", "angle", "omega",
               "tumbling_orientation", "tumbling_duration", "nt_stats"]
 
     for field in fields:
