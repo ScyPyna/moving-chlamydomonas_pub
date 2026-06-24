@@ -40,7 +40,7 @@ def _show_plots(info: dict) -> None:
     machine = info.get("machine", "microscope2D")
 
     tab_names = [
-        "Theta", "Theta Y (legacy)", "Theta X (axis 0)", "Theta Y (axis 1)",
+        "Theta", "Theta Y (legacy)", "Theta X", "Theta Y",
         "Flux", "N(t)", "Angle", "Omega",
         "Density vs dist", "Tumbling θ", "Tumbling duration",
     ]
@@ -54,15 +54,15 @@ def _show_plots(info: dict) -> None:
         ("Theta Y (legacy)", lambda: plot_theta_y_distribution(
             results_dir=rd, exp_ids=eids,
             inner_circle=t_inner, thickness_circle=t_thick,
-            max_distance=t_maxd, pol_axis=None, save_path=None)),
-        ("Theta X (axis 0)", lambda: plot_theta_y_distribution(
+            max_distance=t_maxd, axis="y", save_path=None)),
+        ("Theta X", lambda: plot_theta_y_distribution(
             results_dir=rd, exp_ids=eids,
             inner_circle=t_inner, thickness_circle=t_thick,
-            max_distance=t_maxd, pol_axis=0, save_path=None)),
-        ("Theta Y (axis 1)", lambda: plot_theta_y_distribution(
+            max_distance=t_maxd, axis="x", save_path=None)),
+        ("Theta Y", lambda: plot_theta_y_distribution(
             results_dir=rd, exp_ids=eids,
             inner_circle=t_inner, thickness_circle=t_thick,
-            max_distance=t_maxd, pol_axis=1, save_path=None)),
+            max_distance=t_maxd, axis="y_only", save_path=None)),
         ("Flux", lambda: plot_flux(
             results_dir=rd, settings_path=sp, exp_ids=eids, disc_radius=disc, save_path=None)),
         ("N(t)", lambda: plot_nt_stats(
@@ -94,18 +94,20 @@ def _show_plots(info: dict) -> None:
         import matplotlib.pyplot as plt
 
         pol_cols = st.columns(2)
-        for col, (pol_axis, label) in zip(
+        for col, (axis_key, label, file_pattern) in zip(
             pol_cols,
-            [(0, "Horizontal pol (axis 0 — θₓ)"), (1, "Vertical pol (axis 1 — θᵧ)")],
+            [
+                ("x",      r"θₓ — angle w.r.t. x axis", "ThetaX_exp{id}.txt"),
+                ("y_only", r"θᵧ — angle w.r.t. y axis", "ThetaY_only_exp{id}.txt"),
+            ],
         ):
             with col:
                 st.caption(label)
                 theta_all: list[np.ndarray] = []
                 for exp_id in eids:
-                    path = rd / f"ThetaY_axis{pol_axis}_exp{exp_id}.txt"
+                    path = rd / file_pattern.format(id=exp_id)
                     if not path.exists():
                         continue
-                    import pandas as pd
                     data = np.genfromtxt(path, skip_header=1)
                     if not (isinstance(data, float) and np.isnan(data)) and getattr(data, "size", 0) > 0:
                         if data.ndim == 1:
@@ -115,7 +117,7 @@ def _show_plots(info: dict) -> None:
                 if theta_all:
                     theta = np.concatenate(theta_all)
                     theta = theta[np.isfinite(theta)]
-                    # mirror to full circle: theta in [0,pi] → reflect to [0,2pi]
+                    # mirror [0,π] to full circle [0,2π]
                     theta_full = np.concatenate([theta, 2 * np.pi - theta])
                     bins = 36
                     counts, bin_edges = np.histogram(theta_full, bins=bins, range=(0, 2 * np.pi), density=True)
@@ -128,7 +130,7 @@ def _show_plots(info: dict) -> None:
                     st.pyplot(fig_p)
                     plt.close(fig_p)
                 else:
-                    st.info(f"Nessun dato ThetaY_axis{pol_axis} per gli esperimenti selezionati.")
+                    st.info(f"Nessun dato {file_pattern} per gli esperimenti selezionati.")
 
 
 st.set_page_config(page_title="Clam Pipeline", page_icon="🔬", layout="centered")

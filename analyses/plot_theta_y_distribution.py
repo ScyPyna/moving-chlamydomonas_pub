@@ -9,6 +9,13 @@ import matplotlib.pyplot as plt
 from analyses.load_results import load_theta_y_file
 from analyses.common import COLOR_GREEN, COLOR_ORANGE
 
+# Mapping from axis name to file prefix and axis label
+_AXIS_CONFIG = {
+    "y":      ("ThetaY_exp{id}.txt",      r"$\theta_y$"),
+    "x":      ("ThetaX_exp{id}.txt",      r"$\theta_x$"),
+    "y_only": ("ThetaY_only_exp{id}.txt", r"$\theta_y$"),
+}
+
 
 def plot_theta_y_distribution(
     results_dir: Path,
@@ -19,15 +26,18 @@ def plot_theta_y_distribution(
     bins: int = 10,
     figsize=(1.75, 2.25),
     dpi: int = 600,
-    pol_axis: Optional[int] = None,   # None = legacy ThetaY; 0 = x-axis; 1 = y-axis
+    axis: str = "y",   # "y" = legacy, "x" = w.r.t. x image axis, "y_only" = w.r.t. y image axis
     save_path: Optional[Path] = None,
 ):
     """
-    Distribution of the swimming angle with respect to a reference axis.
+    Distribution of the swimming angle with respect to a reference image axis.
 
-    pol_axis=None  → legacy ThetaY_exp{id}.txt  (theta_y = arccos(Vy/|V|), y image-down)
-    pol_axis=0     → ThetaY_axis0_exp{id}.txt   (theta_x = arccos(Vx/|V|), horizontal pol)
-    pol_axis=1     → ThetaY_axis1_exp{id}.txt   (theta_y = arccos(Vy/|V|), vertical pol)
+    axis="y"      → ThetaY_exp{id}.txt      legacy file, arccos(Vy/|V|)
+    axis="x"      → ThetaX_exp{id}.txt      arccos(Vx/|V|), angle w.r.t. x image axis
+    axis="y_only" → ThetaY_only_exp{id}.txt arccos(Vy/|V|), angle w.r.t. y image axis
+
+    Both theta_x and theta_y_only are computed for every experiment with no assumption
+    on polarisation direction — the anisotropy (if any) emerges from the data.
 
     theta = 0   → swimming along +axis
     theta = π/2 → swimming perpendicular to axis
@@ -35,20 +45,20 @@ def plot_theta_y_distribution(
 
     Two panels: particles inside the disc (green) and outside (orange).
     """
+    file_pattern, xlabel = _AXIS_CONFIG.get(axis, _AXIS_CONFIG["y"])
+
     theta_list: list[np.ndarray] = []
     dist_list: list[np.ndarray] = []
 
     for exp_id in exp_ids:
-        if pol_axis is None:
-            path = results_dir / f"ThetaY_exp{exp_id}.txt"
-        else:
-            path = results_dir / f"ThetaY_axis{pol_axis}_exp{exp_id}.txt"
+        path = results_dir / file_pattern.format(id=exp_id)
         if not path.exists():
             continue
         df = load_theta_y_file(path)
         if df.empty:
             continue
-        theta = df["theta_y"].to_numpy(dtype=float)
+        col = df.columns[0]   # theta_y or theta_x
+        theta = df[col].to_numpy(dtype=float)
         dist = df["dist"].to_numpy(dtype=float)
         mask = np.isfinite(theta) & np.isfinite(dist)
         if mask.any():
@@ -56,9 +66,8 @@ def plot_theta_y_distribution(
             dist_list.append(dist[mask])
 
     if not theta_list:
-        suffix = f"axis{pol_axis}" if pol_axis is not None else "legacy"
         raise FileNotFoundError(
-            f"No ThetaY result files ({suffix}) found for experiments {list(exp_ids)} "
+            f"No result files ({file_pattern}) found for experiments {list(exp_ids)} "
             f"in {results_dir}."
         )
 
@@ -82,12 +91,11 @@ def plot_theta_y_distribution(
     else:
         axs[1].text(0.1, 0.5, "No outside data", transform=axs[1].transAxes)
 
-    axis_label = {None: r"$\theta_y$ (legacy)", 0: r"$\theta_x$", 1: r"$\theta_y$"}
     for ax in axs:
         ax.set_xticks([0, np.pi / 2, np.pi], ['$0$', r'$\pi/2$', r'$\pi$'])
         ax.set_yticks([0.2, 0.3, 0.4])
 
-    axs[1].set_xlabel(axis_label.get(pol_axis, r"$\theta$"))
+    axs[1].set_xlabel(xlabel)
     fig.supylabel(r'$P(\theta)$', va='center')
     axs[0].set_xlabel('')
     axs[0].set_ylim([0.25, 0.4])

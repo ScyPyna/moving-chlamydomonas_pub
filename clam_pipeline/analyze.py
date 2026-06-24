@@ -42,9 +42,9 @@ class FilterParams:
 @dataclass
 class AnalysisOutputs:
     theta: pd.DataFrame
-    theta_y: pd.DataFrame          # kept for backward-compat (axis=1, y-axis)
-    theta_y_axis0: pd.DataFrame    # angle w.r.t. x-axis (horizontal pol)
-    theta_y_axis1: pd.DataFrame    # angle w.r.t. y-axis (vertical pol)
+    theta_y: pd.DataFrame          # kept for backward-compat: arccos(Vy/|V|)
+    theta_x: pd.DataFrame          # arccos(Vx/|V|) — angle w.r.t. x image axis
+    theta_y_only: pd.DataFrame     # arccos(Vy/|V|) — angle w.r.t. y image axis (explicit)
     flux: pd.DataFrame
     angle: pd.DataFrame
     omega: pd.DataFrame
@@ -219,10 +219,10 @@ def analyze_experiment(
 
     all_theta_y = []
     all_theta_y_dist = []
-    all_theta_y_axis0 = []        # angle w.r.t. x-axis (Vx component)
-    all_theta_y_axis0_dist = []
-    all_theta_y_axis1 = []        # angle w.r.t. y-axis (Vy component) — image coords, y↓
-    all_theta_y_axis1_dist = []
+    all_theta_x = []        # angle w.r.t. x image axis: arccos(Vx/|V|)
+    all_theta_x_dist = []
+    all_theta_y_only = []   # angle w.r.t. y image axis: arccos(Vy/|V|), y grows downward
+    all_theta_y_only_dist = []
 
     all_fluxes = []
     all_flux_times = []
@@ -294,31 +294,25 @@ def analyze_experiment(
                 _V = np.sqrt(_Vx**2 + _Vy**2)
                 _dist_y = cu.moving_average(p.dist[_inside], ps + 1)
                 _n = min(len(_V), len(_dist_y))
-                _V = _V[:_n]; _Vy = _Vy[:_n]; _dist_y = _dist_y[:_n]
+                _V = _V[:_n]; _Vx = _Vx[:_n]; _Vy = _Vy[:_n]; _dist_y = _dist_y[:_n]
+                _good = _V > 0
+                # theta_y: angle between velocity and +y image axis (y grows downward in pixel coords)
+                # theta_x: angle between velocity and +x image axis
+                # Both computed for every experiment — no assumption on polarisation direction.
                 _ty = np.full(_n, np.nan)
                 _tx = np.full(_n, np.nan)
-                _good = _V > 0
-                # theta_y: angle between velocity and +y image axis (y grows downward)
-                # arccos(Vy / |V|) — NO sign flip; caller must account for image orientation
                 _ty[_good] = np.arccos(np.clip(_Vy[_good] / _V[_good], -1.0, 1.0))
-                # theta_x: angle between velocity and +x image axis
                 _tx[_good] = np.arccos(np.clip(_Vx[_good] / _V[_good], -1.0, 1.0))
-                _m = np.isfinite(_ty) & np.isfinite(_dist_y)
-                if np.any(_m):
-                    all_theta_y.append(_ty[_m])
-                    all_theta_y_dist.append(_dist_y[_m])
-                # split by geometry axis so plots can pick the relevant component
-                pol_axis = speckle.axis  # 0 = horizontal (x), 1 = vertical (y)
-                if pol_axis == 0:
-                    _m0 = np.isfinite(_tx) & np.isfinite(_dist_y)
-                    if np.any(_m0):
-                        all_theta_y_axis0.append(_tx[_m0])
-                        all_theta_y_axis0_dist.append(_dist_y[_m0])
-                else:
-                    _m1 = np.isfinite(_ty) & np.isfinite(_dist_y)
-                    if np.any(_m1):
-                        all_theta_y_axis1.append(_ty[_m1])
-                        all_theta_y_axis1_dist.append(_dist_y[_m1])
+                _my = np.isfinite(_ty) & np.isfinite(_dist_y)
+                _mx = np.isfinite(_tx) & np.isfinite(_dist_y)
+                if np.any(_my):
+                    all_theta_y.append(_ty[_my])
+                    all_theta_y_dist.append(_dist_y[_my])
+                    all_theta_y_only.append(_ty[_my])
+                    all_theta_y_only_dist.append(_dist_y[_my])
+                if np.any(_mx):
+                    all_theta_x.append(_tx[_mx])
+                    all_theta_x_dist.append(_dist_y[_mx])
         except Exception:
             pass
 
@@ -536,20 +530,20 @@ def analyze_experiment(
         if all_theta_y else pd.DataFrame(columns=["theta_y", "dist"])
     )
 
-    theta_y_axis0_df = (
+    theta_x_df = (
         pd.DataFrame({
-            "theta_y": np.concatenate(all_theta_y_axis0),
-            "dist": np.concatenate(all_theta_y_axis0_dist),
+            "theta_x": np.concatenate(all_theta_x),
+            "dist": np.concatenate(all_theta_x_dist),
         })
-        if all_theta_y_axis0 else pd.DataFrame(columns=["theta_y", "dist"])
+        if all_theta_x else pd.DataFrame(columns=["theta_x", "dist"])
     )
 
-    theta_y_axis1_df = (
+    theta_y_only_df = (
         pd.DataFrame({
-            "theta_y": np.concatenate(all_theta_y_axis1),
-            "dist": np.concatenate(all_theta_y_axis1_dist),
+            "theta_y": np.concatenate(all_theta_y_only),
+            "dist": np.concatenate(all_theta_y_only_dist),
         })
-        if all_theta_y_axis1 else pd.DataFrame(columns=["theta_y", "dist"])
+        if all_theta_y_only else pd.DataFrame(columns=["theta_y", "dist"])
     )
 
     angle_df = (
@@ -592,8 +586,8 @@ def analyze_experiment(
     return AnalysisOutputs(
         theta=theta_df,
         theta_y=theta_y_df,
-        theta_y_axis0=theta_y_axis0_df,
-        theta_y_axis1=theta_y_axis1_df,
+        theta_x=theta_x_df,
+        theta_y_only=theta_y_only_df,
         flux=flux_df,
         angle=angle_df,
         omega=omega_df,
