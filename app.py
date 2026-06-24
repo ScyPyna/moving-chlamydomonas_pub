@@ -98,9 +98,10 @@ def _show_plots(info: dict) -> None:
         run_dir = info.get("run_dir")
 
         # --- helper ---
-        def _load_polar(csv_path: Path, col: int = 0, mirror: bool = False) -> np.ndarray | None:
+        def _load_polar(csv_path: Path, col: int = 0, mirror: bool = False, wrap: bool = False) -> np.ndarray | None:
             """Load a column from a CSV and return finite values.
-            If mirror=True, reflects [0,π] to full circle [0,2π]."""
+            wrap=True  → converts [-π,π] to [0,2π] (for arctan2 angle)
+            mirror=True → reflects [0,π] to full circle [0,2π] (for arccos theta)"""
             if not csv_path.exists():
                 return None
             try:
@@ -109,6 +110,8 @@ def _show_plots(info: dict) -> None:
                 vals = vals[np.isfinite(vals)]
                 if vals.size == 0:
                     return None
+                if wrap:
+                    vals = np.where(vals < 0, vals + 2 * np.pi, vals)
                 if mirror:
                     vals = np.concatenate([vals, 2 * np.pi - vals])
                 return vals
@@ -125,15 +128,14 @@ def _show_plots(info: dict) -> None:
             ax.tick_params(labelsize=6)
 
         metrics = [
-            ("angle",   "angle.csv",   False, "steelblue",  r"angle — arctan2(Vy,Vx)"),
-            ("theta_x", "theta_x.csv", True,  "darkorange",  r"θₓ = arccos(Vx/|V|)"),
-            ("theta_y", "theta_y.csv", True,  "seagreen",    r"θᵧ = arccos(Vy/|V|)"),
+            ("angle",   "angle.csv",   False, True,  "steelblue",   r"angle — arctan2(Vy,Vx)"),
+            ("theta_x", "theta_x.csv", True,  False, "darkorange",  r"θₓ = arccos(Vx/|V|)"),
+            ("theta_y", "theta_y.csv", True,  False, "seagreen",    r"θᵧ = arccos(Vy/|V|)"),
         ]
 
         n_exp = len(eids)
-        fig_size_w = max(3 * n_exp, 6)
 
-        for metric_key, fname, mirror, color, row_label in metrics:
+        for metric_key, fname, mirror, wrap, color, row_label in metrics:
             st.caption(f"**{row_label}**")
             cols = st.columns(n_exp)
             for col_ui, exp_id in zip(cols, eids):
@@ -141,7 +143,7 @@ def _show_plots(info: dict) -> None:
                     data = None
                     if run_dir is not None:
                         csv_path = run_dir / f"exp_{exp_id:04d}" / fname
-                        data = _load_polar(csv_path, col=0, mirror=mirror)
+                        data = _load_polar(csv_path, col=0, mirror=mirror, wrap=wrap)
 
                     if data is not None:
                         fig_p, ax_p = plt.subplots(
