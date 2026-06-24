@@ -11,9 +11,13 @@ from contextlib import redirect_stdout
 from datetime import datetime
 from pathlib import Path
 
-import streamlit as st
+import numpy as np
+import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+
+import streamlit as st
 
 # ---------------------------------------------------------------------------
 # Page config
@@ -87,50 +91,69 @@ def _show_plots(info: dict) -> None:
             except Exception as e:
                 st.warning(f"Plot non disponibile: {e}")
 
-    # --- PhotonicsLab: polar preview ---
+    # --- PhotonicsLab: per-experiment polar preview ---
     if machine == "photonicsLab":
         st.subheader("📡 Polar diagrams — PhotonicsLab preview")
-        import numpy as np
-        import matplotlib.pyplot as plt
 
-        pol_cols = st.columns(2)
-        for col, (axis_key, label, file_pattern) in zip(
-            pol_cols,
-            [
-                ("x",      r"θₓ — angle w.r.t. x axis", "ThetaX_exp{id}.txt"),
-                ("y_only", r"θᵧ — angle w.r.t. y axis", "ThetaY_only_exp{id}.txt"),
-            ],
-        ):
-            with col:
-                st.caption(label)
-                theta_all: list[np.ndarray] = []
-                for exp_id in eids:
-                    path = rd / file_pattern.format(id=exp_id)
-                    if not path.exists():
-                        continue
-                    data = np.genfromtxt(path, skip_header=1)
-                    if not (isinstance(data, float) and np.isnan(data)) and getattr(data, "size", 0) > 0:
-                        if data.ndim == 1:
-                            data = data.reshape(1, -1)
-                        theta_all.append(data[:, 0])
+        run_dir = info.get("run_dir")
 
-                if theta_all:
-                    theta = np.concatenate(theta_all)
-                    theta = theta[np.isfinite(theta)]
-                    # mirror [0,π] to full circle [0,2π]
-                    theta_full = np.concatenate([theta, 2 * np.pi - theta])
-                    bins = 36
-                    counts, bin_edges = np.histogram(theta_full, bins=bins, range=(0, 2 * np.pi), density=True)
-                    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        # --- helper ---
+        def _load_polar(csv_path: Path, col: int = 0, mirror: bool = False) -> np.ndarray | None:
+            """Load a column from a CSV and return finite values.
+            If mirror=True, reflects [0,π] to full circle [0,2π]."""
+            if not csv_path.exists():
+                return None
+            try:
+                df = pd.read_csv(csv_path)
+                vals = df.iloc[:, col].dropna().to_numpy(dtype=float)
+                vals = vals[np.isfinite(vals)]
+                if vals.size == 0:
+                    return None
+                if mirror:
+                    vals = np.concatenate([vals, 2 * np.pi - vals])
+                return vals
+            except Exception:
+                return None
 
-                    fig_p, ax_p = plt.subplots(subplot_kw={"projection": "polar"}, figsize=(3, 3), dpi=150)
-                    ax_p.bar(bin_centers, counts, width=2 * np.pi / bins, alpha=0.6, align="center")
-                    ax_p.set_theta_zero_location("N")
-                    ax_p.set_theta_direction(-1)
-                    st.pyplot(fig_p)
-                    plt.close(fig_p)
-                else:
-                    st.info(f"Nessun dato {file_pattern} per gli esperimenti selezionati.")
+        def _polar_bar(ax, data: np.ndarray, bins: int = 36, color="steelblue"):
+            counts, edges = np.histogram(data, bins=bins, range=(0, 2 * np.pi), density=True)
+            centers = (edges[:-1] + edges[1:]) / 2
+            ax.bar(centers, counts, width=2 * np.pi / bins, alpha=0.6,
+                   align="center", color=color)
+            ax.set_theta_zero_location("N")
+            ax.set_theta_direction(-1)
+            ax.tick_params(labelsize=6)
+
+        metrics = [
+            ("angle",   "angle.csv",   False, "steelblue",  r"angle — arctan2(Vy,Vx)"),
+            ("theta_x", "theta_x.csv", True,  "darkorange",  r"θₓ = arccos(Vx/|V|)"),
+            ("theta_y", "theta_y.csv", True,  "seagreen",    r"θᵧ = arccos(Vy/|V|)"),
+        ]
+
+        n_exp = len(eids)
+        fig_size_w = max(3 * n_exp, 6)
+
+        for metric_key, fname, mirror, color, row_label in metrics:
+            st.caption(f"**{row_label}**")
+            cols = st.columns(n_exp)
+            for col_ui, exp_id in zip(cols, eids):
+                with col_ui:
+                    data = None
+                    if run_dir is not None:
+                        csv_path = run_dir / f"exp_{exp_id:04d}" / fname
+                        data = _load_polar(csv_path, col=0, mirror=mirror)
+
+                    if data is not None:
+                        fig_p, ax_p = plt.subplots(
+                            subplot_kw={"projection": "polar"},
+                            figsize=(2.5, 2.5), dpi=120,
+                        )
+                        _polar_bar(ax_p, data, color=color)
+                        ax_p.set_title(f"exp {exp_id}", fontsize=8, pad=4)
+                        st.pyplot(fig_p)
+                        plt.close(fig_p)
+                    else:
+                        st.info(f"exp {exp_id}\nno data")
 
 
 st.set_page_config(page_title="Clam Pipeline", page_icon="🔬", layout="centered")
