@@ -37,21 +37,32 @@ def _show_plots(info: dict) -> None:
     t_inner = info.get("theta_inner_circle", 300.0)
     t_thick = info.get("theta_thickness", 0.0)
     t_maxd  = info.get("theta_max_distance", 800.0)
+    machine = info.get("machine", "microscope2D")
 
-    tabs = st.tabs([
-        "Theta", "Theta Y", "Flux", "N(t)", "Angle", "Omega",
+    tab_names = [
+        "Theta", "Theta Y (legacy)", "Theta X (axis 0)", "Theta Y (axis 1)",
+        "Flux", "N(t)", "Angle", "Omega",
         "Density vs dist", "Tumbling θ", "Tumbling duration",
-    ])
+    ]
+    tabs = st.tabs(tab_names)
 
     plots = [
         ("Theta", lambda: plot_theta_distribution(
             results_dir=rd, settings_path=sp, exp_ids=eids,
             inner_circle=t_inner, thickness_circle=t_thick,
             max_distance=t_maxd, save_path=None)),
-        ("Theta Y", lambda: plot_theta_y_distribution(
+        ("Theta Y (legacy)", lambda: plot_theta_y_distribution(
             results_dir=rd, exp_ids=eids,
             inner_circle=t_inner, thickness_circle=t_thick,
-            max_distance=t_maxd, save_path=None)),
+            max_distance=t_maxd, pol_axis=None, save_path=None)),
+        ("Theta X (axis 0)", lambda: plot_theta_y_distribution(
+            results_dir=rd, exp_ids=eids,
+            inner_circle=t_inner, thickness_circle=t_thick,
+            max_distance=t_maxd, pol_axis=0, save_path=None)),
+        ("Theta Y (axis 1)", lambda: plot_theta_y_distribution(
+            results_dir=rd, exp_ids=eids,
+            inner_circle=t_inner, thickness_circle=t_thick,
+            max_distance=t_maxd, pol_axis=1, save_path=None)),
         ("Flux", lambda: plot_flux(
             results_dir=rd, settings_path=sp, exp_ids=eids, disc_radius=disc, save_path=None)),
         ("N(t)", lambda: plot_nt_stats(
@@ -75,6 +86,49 @@ def _show_plots(info: dict) -> None:
                 st.pyplot(fig)
             except Exception as e:
                 st.warning(f"Plot non disponibile: {e}")
+
+    # --- PhotonicsLab: polar preview ---
+    if machine == "photonicsLab":
+        st.subheader("📡 Polar diagrams — PhotonicsLab preview")
+        import numpy as np
+        import matplotlib.pyplot as plt
+
+        pol_cols = st.columns(2)
+        for col, (pol_axis, label) in zip(
+            pol_cols,
+            [(0, "Horizontal pol (axis 0 — θₓ)"), (1, "Vertical pol (axis 1 — θᵧ)")],
+        ):
+            with col:
+                st.caption(label)
+                theta_all: list[np.ndarray] = []
+                for exp_id in eids:
+                    path = rd / f"ThetaY_axis{pol_axis}_exp{exp_id}.txt"
+                    if not path.exists():
+                        continue
+                    import pandas as pd
+                    data = np.genfromtxt(path, skip_header=1)
+                    if not (isinstance(data, float) and np.isnan(data)) and getattr(data, "size", 0) > 0:
+                        if data.ndim == 1:
+                            data = data.reshape(1, -1)
+                        theta_all.append(data[:, 0])
+
+                if theta_all:
+                    theta = np.concatenate(theta_all)
+                    theta = theta[np.isfinite(theta)]
+                    # mirror to full circle: theta in [0,pi] → reflect to [0,2pi]
+                    theta_full = np.concatenate([theta, 2 * np.pi - theta])
+                    bins = 36
+                    counts, bin_edges = np.histogram(theta_full, bins=bins, range=(0, 2 * np.pi), density=True)
+                    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+
+                    fig_p, ax_p = plt.subplots(subplot_kw={"projection": "polar"}, figsize=(3, 3), dpi=150)
+                    ax_p.bar(bin_centers, counts, width=2 * np.pi / bins, alpha=0.6, align="center")
+                    ax_p.set_theta_zero_location("N")
+                    ax_p.set_theta_direction(-1)
+                    st.pyplot(fig_p)
+                    plt.close(fig_p)
+                else:
+                    st.info(f"Nessun dato ThetaY_axis{pol_axis} per gli esperimenti selezionati.")
 
 
 st.set_page_config(page_title="Clam Pipeline", page_icon="🔬", layout="centered")
@@ -265,5 +319,6 @@ if st.button("▶ Avvia analisi", type="primary"):
         plot_info["theta_inner_circle"] = float(theta_inner_circle)
         plot_info["theta_thickness"]    = float(theta_thickness)
         plot_info["theta_max_distance"] = float(theta_max_distance)
+        plot_info["machine"]            = machine
         st.header("5. Risultati")
         _show_plots(plot_info)

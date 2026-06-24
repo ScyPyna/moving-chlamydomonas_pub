@@ -19,15 +19,19 @@ def plot_theta_y_distribution(
     bins: int = 10,
     figsize=(1.75, 2.25),
     dpi: int = 600,
+    pol_axis: Optional[int] = None,   # None = legacy ThetaY; 0 = x-axis; 1 = y-axis
     save_path: Optional[Path] = None,
 ):
     """
-    Distribution of the swimming angle with respect to the y-axis (short image axis).
+    Distribution of the swimming angle with respect to a reference axis.
 
-    theta_y = arccos(Vy / |V|), with theta_y in [0, pi].
-    theta_y = 0  -> swimming along +y
-    theta_y = pi/2 -> swimming perpendicular to y (along x)
-    theta_y = pi -> swimming along -y
+    pol_axis=None  → legacy ThetaY_exp{id}.txt  (theta_y = arccos(Vy/|V|), y image-down)
+    pol_axis=0     → ThetaY_axis0_exp{id}.txt   (theta_x = arccos(Vx/|V|), horizontal pol)
+    pol_axis=1     → ThetaY_axis1_exp{id}.txt   (theta_y = arccos(Vy/|V|), vertical pol)
+
+    theta = 0   → swimming along +axis
+    theta = π/2 → swimming perpendicular to axis
+    theta = π   → swimming along -axis
 
     Two panels: particles inside the disc (green) and outside (orange).
     """
@@ -35,7 +39,10 @@ def plot_theta_y_distribution(
     dist_list: list[np.ndarray] = []
 
     for exp_id in exp_ids:
-        path = results_dir / f"ThetaY_exp{exp_id}.txt"
+        if pol_axis is None:
+            path = results_dir / f"ThetaY_exp{exp_id}.txt"
+        else:
+            path = results_dir / f"ThetaY_axis{pol_axis}_exp{exp_id}.txt"
         if not path.exists():
             continue
         df = load_theta_y_file(path)
@@ -49,8 +56,9 @@ def plot_theta_y_distribution(
             dist_list.append(dist[mask])
 
     if not theta_list:
+        suffix = f"axis{pol_axis}" if pol_axis is not None else "legacy"
         raise FileNotFoundError(
-            f"No ThetaY result files found for experiments {list(exp_ids)} "
+            f"No ThetaY result files ({suffix}) found for experiments {list(exp_ids)} "
             f"in {results_dir}."
         )
 
@@ -74,12 +82,13 @@ def plot_theta_y_distribution(
     else:
         axs[1].text(0.1, 0.5, "No outside data", transform=axs[1].transAxes)
 
+    axis_label = {None: r"$\theta_y$ (legacy)", 0: r"$\theta_x$", 1: r"$\theta_y$"}
     for ax in axs:
         ax.set_xticks([0, np.pi / 2, np.pi], ['$0$', r'$\pi/2$', r'$\pi$'])
         ax.set_yticks([0.2, 0.3, 0.4])
 
-    axs[1].set_xlabel(r'$\theta_y$')
-    fig.supylabel(r'$P(\theta_y)$', va='center')
+    axs[1].set_xlabel(axis_label.get(pol_axis, r"$\theta$"))
+    fig.supylabel(r'$P(\theta)$', va='center')
     axs[0].set_xlabel('')
     axs[0].set_ylim([0.25, 0.4])
     axs[1].set_ylim([0.25, 0.4])
