@@ -19,6 +19,15 @@ import matplotlib.pyplot as plt
 
 import streamlit as st
 
+
+def _fig_to_png_bytes(fig, dpi: int = 250) -> bytes:
+    """Render a matplotlib figure to PNG bytes at the given DPI."""
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight")
+    buf.seek(0)
+    return buf.getvalue()
+
+
 # ---------------------------------------------------------------------------
 # Page config
 # ---------------------------------------------------------------------------
@@ -88,6 +97,14 @@ def _show_plots(info: dict) -> None:
             try:
                 fig, _ = fn()
                 st.pyplot(fig)
+                png_bytes = _fig_to_png_bytes(fig, dpi=250)
+                st.download_button(
+                    label="⬇️ Scarica PNG (250 dpi)",
+                    data=png_bytes,
+                    file_name=f"{name.replace(' ', '_').replace('(', '').replace(')', '')}.png",
+                    mime="image/png",
+                    key=f"download_{name}",
+                )
             except Exception as e:
                 st.warning(f"Plot non disponibile: {e}")
 
@@ -153,6 +170,14 @@ def _show_plots(info: dict) -> None:
                         _polar_bar(ax_p, data, color=color)
                         ax_p.set_title(f"exp {exp_id}", fontsize=8, pad=4)
                         st.pyplot(fig_p)
+                        png_bytes = _fig_to_png_bytes(fig_p, dpi=250)
+                        st.download_button(
+                            label="⬇️ PNG",
+                            data=png_bytes,
+                            file_name=f"{metric_key}_exp{exp_id}.png",
+                            mime="image/png",
+                            key=f"download_{metric_key}_{exp_id}",
+                        )
                         plt.close(fig_p)
                     else:
                         st.info(f"exp {exp_id}\nno data")
@@ -349,3 +374,4 @@ if st.button("▶ Avvia analisi", type="primary"):
         plot_info["machine"]            = machine
         st.header("5. Risultati")
         _show_plots(plot_info)
+
