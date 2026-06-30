@@ -152,15 +152,66 @@ def _show_plots(info: dict) -> None:
 
         n_exp = len(eids)
 
+        # --- preload all data once, used both for the grid and the combined figure ---
+        loaded = {}
+        for metric_key, fname, mirror, wrap, color, row_label in metrics:
+            loaded[metric_key] = {}
+            for exp_id in eids:
+                data = None
+                if run_dir is not None:
+                    csv_path = run_dir / f"exp_{exp_id:04d}" / fname
+                    data = _load_polar(csv_path, col=0, mirror=mirror, wrap=wrap)
+                loaded[metric_key][exp_id] = data
+
+        # --- combined single-image figure (all rows x all experiments) ---
+        n_rows = len(metrics)
+        fig_combined, axs_combined = plt.subplots(
+            n_rows, n_exp,
+            subplot_kw={"projection": "polar"},
+            figsize=(2.6 * n_exp, 2.6 * n_rows),
+            dpi=120,
+        )
+        if n_exp == 1:
+            axs_combined = axs_combined.reshape(n_rows, 1)
+        if n_rows == 1:
+            axs_combined = axs_combined.reshape(1, n_exp)
+
+        for row_idx, (metric_key, fname, mirror, wrap, color, row_label) in enumerate(metrics):
+            for col_idx, exp_id in enumerate(eids):
+                ax_c = axs_combined[row_idx, col_idx]
+                data = loaded[metric_key][exp_id]
+                if data is not None:
+                    _polar_bar(ax_c, data, color=color)
+                else:
+                    ax_c.text(0.5, 0.5, "no data", transform=ax_c.transAxes,
+                              ha="center", va="center", fontsize=7)
+                if row_idx == 0:
+                    ax_c.set_title(f"exp {exp_id}", fontsize=9, pad=10)
+                if col_idx == 0:
+                    ax_c.text(-0.3, 0.5, row_label, transform=ax_c.transAxes,
+                               rotation=90, va="center", ha="center", fontsize=9)
+
+        fig_combined.suptitle("Polar diagrams — angle / θₓ / θᵧ", fontsize=12)
+        fig_combined.tight_layout()
+
+        combined_png = _fig_to_png_bytes(fig_combined, dpi=250)
+        st.download_button(
+            label="⬇️ Scarica griglia completa (PNG, 250 dpi)",
+            data=combined_png,
+            file_name="polar_diagrams_combined.png",
+            mime="image/png",
+            key="download_polar_combined",
+        )
+        plt.close(fig_combined)
+
+        st.divider()
+
         for metric_key, fname, mirror, wrap, color, row_label in metrics:
             st.caption(f"**{row_label}**")
             cols = st.columns(n_exp)
             for col_ui, exp_id in zip(cols, eids):
                 with col_ui:
-                    data = None
-                    if run_dir is not None:
-                        csv_path = run_dir / f"exp_{exp_id:04d}" / fname
-                        data = _load_polar(csv_path, col=0, mirror=mirror, wrap=wrap)
+                    data = loaded[metric_key][exp_id]
 
                     if data is not None:
                         fig_p, ax_p = plt.subplots(
